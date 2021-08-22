@@ -1,7 +1,7 @@
 using CSV, DataFrames, Dates, ProgressMeter, Plots, LaTeXStrings, TimeSeries, GR, StatsBase, StatsPlots, Distributions
 
 # Basic EDA, trading visualizations
-function plotTaq(ticker::String, date::Date)
+function plotTaq(ticker::String, date::Date, write::Bool)
 
     # make sure using the GR backend
     gr()
@@ -67,15 +67,26 @@ function plotTaq(ticker::String, date::Date)
     Plots.scatter!(trade_filter[:,:time], trade_filter[:,:trade], markercolor = :yellow, markersize = trade_filter[:,:tradeVol]./scale_factor_2, legend = true, label = "Trade")
     Plots.plot!(trading_window_2[:,:time], trading_window_2[:,:microPrice], linetype = :steppost, color = :black, legend = true, linewidth = 0.5, label = "Microprice")
 
-    display(Plots.plot(p1, layout = (1,1), legend = false, label = ("Bid","Ask","Trade","Microprice"), background_color = :white,
-    xlabel = date, ylabel = "Price [ZAR]", title = ""*ticker*" Top of Book Trade and Quote Data Visualization", size = (700,500), dpi = 1000))
-    display(Plots.plot(p2, layout = (1,1), legend = false, label = ("Bid","Ask","Trade","Microprice"), background_color = :white,
-    xlabel = date, ylabel = "Price [ZAR]", title = ""*ticker*" Top of Book Trade and Quote Data Visualization", size = (700,500), dpi = 1000))
+    p1_final = Plots.plot(p1, layout = (1,1), legend = false, label = ("Bid","Ask","Trade","Microprice"), background_color = :white,
+    xlabel = date, ylabel = "Price [ZAR]", title = ""*ticker*" Top of Book Trade and Quote Data Visualization", size = (700,500), dpi = 1000)
+
+    p2_final = Plots.plot(p2, layout = (1,1), legend = false, label = ("Bid","Ask","Trade","Microprice"), background_color = :white,
+    xlabel = date, ylabel = "Price [ZAR]", title = ""*ticker*" Top of Book Trade and Quote Data Visualization", size = (700,500), dpi = 1000)
+
+    display(p1_final)
+    display(p2_final)
+
+    if write
+
+        Plots.savefig(p1_final, "Images\\JSE_TOBVIS_"*ticker*"_"*Dates.format(date, "yyyy-mm-dd")*"_10-11.pdf")
+        Plots.savefig(p2_final, "Images\\JSE_TOBVIS_"*ticker*"_"*Dates.format(date, "yyyy-mm-dd")*"_16-17.pdf")
+
+    end
 
 end
 
 # Orderflow auto-correlation
-function plotOrderFlowACF(ticker::String, lags::Int64)
+function plotOrderFlowACF(ticker::String, lags::Int64, write::Bool)
 
     # make sure using the GR backend
     gr()
@@ -113,17 +124,27 @@ function plotOrderFlowACF(ticker::String, lags::Int64)
     p1 = Plots.plot(1:lags, order_flow_acf, color = :black, seriestype = :sticks, legend = false)
     Plots.hline!(1:lags, [1.96/sqrt(length(trade_signs))], seriestype = :line, color = :red, legend = false, lw = 2)
     Plots.hline!(1:lags, [-1.96/sqrt(length(trade_signs))], seriestype = :line, color = :red, legend = false, lw = 2)
-    display(Plots.plot(p1, xlabel = L"\textrm{\textbf{Lag}}", ylabel = L"\textrm{\textbf{Autocorrelation}}", title = "Autocorrelation of the Order Flow for "*ticker*""))
+    p1_acf = Plots.plot(p1, xlabel = L"\textrm{\textbf{Lag}}", ylabel = L"\textrm{\textbf{Autocorrelation}}", title = "Autocorrelation of the Order Flow for "*ticker*"")
+    display(p1_acf)
 
-    display(Plots.plot(1:lags, order_flow_acf, color = :black, seriestype = :line, xscale = :log10, legend = false,
-    xlabel = L"\textrm{\textbf{Lag \;}} \textbf{(log_{10})}", ylabel = L"\textrm{\textbf{Autocorrelation}}", title = "Autocorrelation of the Order Flow for "*ticker*""))
 
-    # plot order flow
+    p2_acf_log = Plots.plot(1:lags, order_flow_acf, color = :black, seriestype = :line, xscale = :log10, legend = false,
+    xlabel = L"\textrm{\textbf{Lag \;}} \textbf{(log_{10})}", ylabel = L"\textrm{\textbf{Autocorrelation}}", title = "Autocorrelation of the Order Flow for "*ticker*"")
+    display(p2_acf_log)
+
+    # save fig
+    if write
+
+        Plots.savefig(p1_acf, "Images\\JSE_ACF_"*ticker*".pdf")
+        Plots.savefig(p2_acf_log, "Images\\JSE_ACF_"*ticker*"_log.pdf")
+
+    end
+
 
 end
 
 # Inter-arrival times
-function plotInterArrivals(ticker::String)
+function plotInterArrivals(ticker::String, write::Bool)
 
     # make sure using the GR backend
     gr()
@@ -138,21 +159,25 @@ function plotInterArrivals(ticker::String)
     trade_data = filter(:interArrivals => x -> !(ismissing(x) || isnothing(x) || isnan(x)), trade_data)
 
     # plot frequencies on normal scale
-    display(Plots.plot(trade_data[:,:interArrivals], seriestype = :hist, bins = 100, xlabel = L"\textbf{Inter-arrival \; Times \; (seconds)}", ylabel = L"\textbf{Frequency}",
-    title = "Distribution of Inter-arrival Times for "*ticker*"", legend = false))
+    hist1 = Plots.plot(trade_data[:,:interArrivals], seriestype = :hist, bins = 100, xlabel = L"\textbf{Inter-arrival \; Times \; (seconds)}", ylabel = L"\textbf{Frequency}",
+    title = "Distribution of Inter-arrival Times for "*ticker*"", legend = false)
+    display(hist1)
     #display(Plots.plot!(Exponential(mean(trade_data[:,:interArrivals])), color = :red, linewidth = 3))
 
     # plot interarrivals on log scale
-    display(Plots.plot(trade_data[:,:interArrivals], yscale = :log10, seriestype = :hist, bins = 100, xlabel = L"\textbf{Inter-arrival \; Times \; (seconds)}",
-    ylabel = L"\textbf{Frequency \; (log_{10})}", title = "Distribution of Inter-arrival Times for "*ticker*"", legend = false))
+    hist_log = Plots.plot(trade_data[:,:interArrivals], yscale = :log10, seriestype = :hist, bins = 100, xlabel = L"\textbf{Inter-arrival \; Times \; (seconds)}",
+    ylabel = L"\textbf{Frequency \; (log_{10})}", title = "Distribution of Inter-arrival Times for "*ticker*"", legend = false)
+    display(hist_log)
 
     # plot qqplot wrt an exponential dist
-    display(qqplot(Exponential, trade_data[:,:interArrivals], xlabel = L"\textrm{\textbf{Theoretical \; Quantiles}}", ylabel = L"\textrm{\textbf{Sample \; Quantiles}}"
-    , title = ""*ticker*" Inter-arrival Times: Exponential QQ-Plot"))
+    qq_exp = qqplot(Exponential, trade_data[:,:interArrivals], xlabel = L"\textrm{\textbf{Theoretical \; Quantiles}}", ylabel = L"\textrm{\textbf{Sample \; Quantiles}}"
+    , title = ""*ticker*" Inter-arrival Times: Exponential QQ-Plot")
+    display(qq_exp)
 
     # plot qqplot with a power law dist because interarrivals have fatter tails than the exponential dist
-    display(qqplot(Pareto, trade_data[:,:interArrivals], scale = :log10, xlabel = L"\textrm{\textbf{Theoretical \; Quantiles}} \; \textbf{(log_{10})}"
-    , ylabel = L"\textrm{\textbf{Sample \; Quantiles}} \; \textbf{(log_{10})}", title = ""*ticker*" Inter-arrival Times: Pareto QQ-Plot"))
+    qq_pareto = qqplot(Pareto, trade_data[:,:interArrivals], scale = :log10, xlabel = L"\textrm{\textbf{Theoretical \; Quantiles}} \; \textbf{(log_{10})}"
+    , ylabel = L"\textrm{\textbf{Sample \; Quantiles}} \; \textbf{(log_{10})}", title = ""*ticker*" Inter-arrival Times: Pareto QQ-Plot")
+    display(qq_pareto)
 
     # plot the ACF of the interArrivals
     lags = 1000
@@ -160,25 +185,39 @@ function plotInterArrivals(ticker::String)
     p1 = Plots.plot(1:lags, interArrivalsACF, color = :black, seriestype = :sticks, legend = false)
     Plots.hline!(1:lags, [1.96/sqrt(length(trade_data[:,:interArrivals]))], seriestype = :line, color = :red, legend = false, lw = 2)
     Plots.hline!(1:lags, [-1.96/sqrt(length(trade_data[:,:interArrivals]))], seriestype = :line, color = :red, legend = false, lw = 2)
-    display(Plots.plot(p1, xlabel = L"\textrm{\textbf{Lag}}", ylabel = L"\textrm{\textbf{Autocorrelation}}", title = "Autocorrelation of the Inter-arrival Times for "*ticker*""))
+    p1_full = Plots.plot(p1, xlabel = L"\textrm{\textbf{Lag}}", ylabel = L"\textrm{\textbf{Autocorrelation}}", title = "Autocorrelation of the Inter-arrival Times for "*ticker*"")
+    display(p1_full)
+
+    # write to file
+    if write
+
+        Plots.savefig(hist1, "Images\\JSE_INTARR_"*ticker*"_hist.pdf")
+        Plots.savefig(hist_log, "Images\\JSE_INTARR_"*ticker*"_hist_log.pdf")
+
+        Plots.savefig(qq_exp, "Images\\JSE_INTARR_"*ticker*"_qq_exp.pdf")
+        Plots.savefig(qq_pareto, "Images\\JSE_INTARR_"*ticker*"_qq_pareto.pdf")
+
+        Plots.savefig(p1_full, "Images\\JSE_INTARR_"*ticker*"_ACF.pdf")
+
+    end
 
 end
 
 # AGL plots
-plotTaq("AGL", Date("2019-07-08"))
+plotTaq("AGL", Date("2019-07-08"), false)
 
-plotOrderFlowACF("AGL", 1000)
+plotOrderFlowACF("AGL", 1000, false)
 
-plotInterArrivals("AGL")
+plotInterArrivals("AGL", false)
 
 # NPN plots
-plotTaq("NPN", Date("2019-07-08"))
+plotTaq("NPN", Date("2019-07-08"), false)
 
-plotOrderFlowACF("NPN", 1000)
+plotOrderFlowACF("NPN", 1000, false)
 
-plotInterArrivals("NPN")
+plotInterArrivals("NPN", false)
 
-compact_data = CSV.read("test_data\\Clean\\TAQ\\JSECLEANTAQNPN.csv", DataFrame)
+#compact_data = CSV.read("test_data\\Clean\\TAQ\\JSECLEANTAQNPN.csv", DataFrame)
 #mean(filter(:interArrivals => x -> !(ismissing(x) || isnothing(x) || isnan(x)), compact_data)[:,:interArrivals])
 #qqplot(filter(:interArrivals => x -> !(ismissing(x) || isnothing(x) || isnan(x)), compact_data)[:,:interArrivals], Exponential(mean(filter(:interArrivals => x -> !(ismissing(x) || isnothing(x) || isnan(x)), compact_data)[:,:interArrivals])))
 #mean(rand(Exponential(15),1000))
