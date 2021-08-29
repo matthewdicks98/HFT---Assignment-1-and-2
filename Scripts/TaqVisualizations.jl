@@ -36,8 +36,8 @@ function plotTaq(ticker::String, date::Date, write::Bool)
 
     # create first plot
     p1 = Plots.scatter(bid_filter[:,:time], bid_filter[:,:bid], markercolor = :blue, markersize = bid_filter[:,:bidVol]./scale_factor_1, legend = true, label = "Bid")
-    Plots.scatter!(ask_filter[:,:time], ask_filter[:,:ask], markercolor = :red, markersize = ask_filter[:,:askVol]./scale_factor_1, legend = true, label = "Ask")
     Plots.scatter!(trade_filter[:,:time], trade_filter[:,:trade], markercolor = :yellow, markersize = trade_filter[:,:tradeVol]./scale_factor_1, legend = true, label = "Trade")
+    Plots.scatter!(ask_filter[:,:time], ask_filter[:,:ask], markercolor = :red, markersize = ask_filter[:,:askVol]./scale_factor_1, legend = true, label = "Ask")
     Plots.plot!(micro_filter[:,:time], micro_filter[:,:microPrice], linetype = :steppost, color = :black, linewidth = 0.5, legend = true, label = "Microprice")
 
     # set the second window time
@@ -63,8 +63,8 @@ function plotTaq(ticker::String, date::Date, write::Bool)
 
     # create second plot
     p2 = Plots.scatter(bid_filter[:,:time], bid_filter[:,:bid], markercolor = :blue, markersize = bid_filter[:,:bidVol]./scale_factor_2, legend = true, label = "Bid")
-    Plots.scatter!(ask_filter[:,:time], ask_filter[:,:ask], markercolor = :red, markersize = ask_filter[:,:askVol]./scale_factor_2, legend = true, label = "Ask")
     Plots.scatter!(trade_filter[:,:time], trade_filter[:,:trade], markercolor = :yellow, markersize = trade_filter[:,:tradeVol]./scale_factor_2, legend = true, label = "Trade")
+    Plots.scatter!(ask_filter[:,:time], ask_filter[:,:ask], markercolor = :red, markersize = ask_filter[:,:askVol]./scale_factor_2, legend = true, label = "Ask")
     Plots.plot!(trading_window_2[:,:time], trading_window_2[:,:microPrice], linetype = :steppost, color = :black, legend = true, linewidth = 0.5, label = "Microprice")
 
     p1_final = Plots.plot(p1, layout = (1,1), legend = false, label = ("Bid","Ask","Trade","Microprice"), background_color = :white,
@@ -180,7 +180,7 @@ function plotInterArrivals(ticker::String, write::Bool)
     display(qq_pareto)
 
     # plot the ACF of the interArrivals
-    lags = 1000
+    lags = 5000
     interArrivalsACF = autocor(trade_data[:,:interArrivals], 1:lags)
     p1 = Plots.plot(1:lags, interArrivalsACF, color = :black, seriestype = :sticks, legend = false)
     Plots.hline!(1:lags, [1.96/sqrt(length(trade_data[:,:interArrivals]))], seriestype = :line, color = :red, legend = false, lw = 2)
@@ -217,7 +217,10 @@ plotOrderFlowACF("NPN", 1000, false)
 
 plotInterArrivals("NPN", false)
 
-#compact_data = CSV.read("test_data\\Clean\\TAQ\\JSECLEANTAQNPN.csv", DataFrame)
+# just some testing code
+
+#compact_data = CSV.read("test_data\\Clean\\TAQ\\JSECLEANTAQAGL.csv", DataFrame)
+
 #mean(filter(:interArrivals => x -> !(ismissing(x) || isnothing(x) || isnan(x)), compact_data)[:,:interArrivals])
 #qqplot(filter(:interArrivals => x -> !(ismissing(x) || isnothing(x) || isnan(x)), compact_data)[:,:interArrivals], Exponential(mean(filter(:interArrivals => x -> !(ismissing(x) || isnothing(x) || isnan(x)), compact_data)[:,:interArrivals])))
 #mean(rand(Exponential(15),1000))
@@ -230,10 +233,29 @@ plotInterArrivals("NPN", false)
 #Plots.plot!(Pareto(alpha, minimum(ia)), lw = 2)
 #qqplot(Pareto(alpha, minimum(ia)), filter(:interArrivals => x -> !(ismissing(x) || isnothing(x) || isnan(x)), compact_data)[:,:interArrivals])
 
+#trades = compact_data[findall(x -> x == "TRADE", compact_data[:,:eventType]),:]
+
+# days = unique(compact_data[:,:date])
+#
+# diff_inter = Float64[]
+#
+# for i in 1:length(days)
+#
+#     days_data = compact_data[findall(x -> x == days[i], compact_data[:,:date]),:]
+#     days_trades = days_data[findall(x -> x == "TRADE", days_data[:,:eventType]),:]
+#
+#     days_ints = diff(datetime2unix.(days_trades[:,:timeStamp]))
+#     append!(diff_inter, days_ints)
+#
+# end
+#
+# qqplot(Exponential, diff_inter)
+# Plots.plot(filter(:interArrivals => x -> !(ismissing(x) || isnothing(x) || isnan(x)) , compact_data)[:,:interArrivals])
 # just checking why trade bubbles are so big
 #days_data = compact_data[findall(x -> x == Date("2019-07-08"), compact_data[:,:date]), :]
 
-
+# size(compact_data[findall(x -> x == "TRADE", compact_data[:,:eventType]),:])[1]/5
+# Plots.plot(filter(:interArrivals => x -> !(ismissing(x) || isnothing(x) || isnan(x)), compact_data)[:,:interArrivals])
 #start_time_1 = DateTime(Date("2019-07-08")) + Hour(16)
 #close_time_1 = DateTime(Date("2019-07-08")) + Hour(17)
 
