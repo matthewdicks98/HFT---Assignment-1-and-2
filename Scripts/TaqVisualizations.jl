@@ -81,8 +81,8 @@ function plotTaq(ticker::String, date::Date, write::Bool)
 
     if write
 
-        Plots.savefig(p1_final, "Images\\JSE_TOBVIS_"*ticker*"_"*Dates.format(date, "yyyy-mm-dd")*"_10-11.pdf")
-        Plots.savefig(p2_final, "Images\\JSE_TOBVIS_"*ticker*"_"*Dates.format(date, "yyyy-mm-dd")*"_16-17.pdf")
+        Plots.savefig(p1_final, "Assignment1 Images\\JSE_TOBVIS_"*ticker*"_"*Dates.format(date, "yyyy-mm-dd")*"_10-11.pdf")
+        Plots.savefig(p2_final, "Assignment1 Images\\JSE_TOBVIS_"*ticker*"_"*Dates.format(date, "yyyy-mm-dd")*"_16-17.pdf")
 
     end
 
@@ -138,8 +138,8 @@ function plotOrderFlowACF(ticker::String, lags::Int64, write::Bool)
     # save fig
     if write
 
-        Plots.savefig(p1_acf, "Images\\JSE_ACF_"*ticker*".pdf")
-        Plots.savefig(p2_acf_log, "Images\\JSE_ACF_"*ticker*"_log.pdf")
+        Plots.savefig(p1_acf, "Assignment1 Images\\JSE_ACF_"*ticker*".pdf")
+        Plots.savefig(p2_acf_log, "Assignment1 Images\\JSE_ACF_"*ticker*"_log.pdf")
 
     end
 
@@ -194,13 +194,13 @@ function plotInterArrivals(ticker::String, write::Bool)
     # write to file
     if write
 
-        Plots.savefig(hist1, "Images\\JSE_INTARR_"*ticker*"_hist.pdf")
-        Plots.savefig(hist_log, "Images\\JSE_INTARR_"*ticker*"_hist_log.pdf")
+        Plots.savefig(hist1, "Assignment1 Images\\JSE_INTARR_"*ticker*"_hist.pdf")
+        Plots.savefig(hist_log, "Assignment1 Images\\JSE_INTARR_"*ticker*"_hist_log.pdf")
 
-        Plots.savefig(qq_exp, "Images\\JSE_INTARR_"*ticker*"_qq_exp.pdf")
-        Plots.savefig(qq_pareto, "Images\\JSE_INTARR_"*ticker*"_qq_pareto.pdf")
+        Plots.savefig(qq_exp, "Assignment1 Images\\JSE_INTARR_"*ticker*"_qq_exp.pdf")
+        Plots.savefig(qq_pareto, "Assignment1 Images\\JSE_INTARR_"*ticker*"_qq_pareto.pdf")
 
-        Plots.savefig(p1_full, "Images\\JSE_INTARR_"*ticker*"_ACF.pdf")
+        Plots.savefig(p1_full, "Assignment1 Images\\JSE_INTARR_"*ticker*"_ACF.pdf")
 
     end
 
