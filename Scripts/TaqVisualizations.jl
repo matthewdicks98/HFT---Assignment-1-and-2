@@ -19,7 +19,7 @@ function plotTaq(ticker::String, date::Date, write::Bool)
     # get data for the first window
     trading_window_1 = days_data[findall( x -> start_time_1 <= x && x < close_time_1, days_data[:,:timeStamp]), :]
 
-    # get the scale factor for the trading volumes
+    # get the scale factor for the trading volumes make bubbles reasonable size
     scale_factor_1 = mean([mean(filter(:bidVol => x -> !(ismissing(x) || isnothing(x) || isnan(x)), trading_window_1)[:,:bidVol]),
     mean(filter(:askVol => x -> !(ismissing(x) || isnothing(x) || isnan(x)), trading_window_1)[:,:askVol]),
     mean(filter(:tradeVol => x -> !(ismissing(x) || isnothing(x) || isnan(x)), trading_window_1)[:,:tradeVol])])/2
