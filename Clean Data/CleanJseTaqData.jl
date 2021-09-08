@@ -4,9 +4,11 @@ using CSV, DataFrames, Dates, ProgressMeter, Plots, LaTeXStrings, TimeSeries, GR
 cd("C:\\Users\\Matt\\Desktop\\UCT Advanced Analytics\\HFT\\HFT---Assignment-1")
 clearconsole()
 
+## Create the dataframe that holds all the info
+## populate the data frame with variables that don't have to be computed from other columns
 function createDataFrame(data::DataFrame)
 
-    # get all the trading dates (extract the dates from datetim object)
+    # get all the trading dates (pulls dates out of timestamp)
     dates = Date.(data[:,1])
 
     # get all the unique dates (all the days)
@@ -24,12 +26,10 @@ function createDataFrame(data::DataFrame)
         days_date = days[j]
         days_data = data[findall(x -> x == days_date, dates), :]
 
-        # keep only continuous trading data 9:00 - 16:49:59 (not sure how to tell if a day is complete)
+        # filter for continuous trading data 9:00 - 16:49:59
         start = DateTime(days_date) + Hour(9)
         close = DateTime(days_date) + Hour(16) + Minute(50)
         days_cont_data = days_data[findall(x -> start <= x && x < close, days_data[:,1]),:]
-
-        # currently not doing compacting because the paper never but need to ask
 
         # loop through all the events in a day and create the dataframe with all the ask, bid and trade data
         for i in 1:size(days_cont_data)[1]
@@ -76,17 +76,16 @@ function createDataFrame(data::DataFrame)
 
 end
 
-# compute the mid price, mid price change, micro price, trade inter arrivals, normalized volume
-
+## compute the mid price, mid price change, micro price, trade inter arrivals, normalized volume
 function computeMidMicroArrivalsNormVol(full_df::DataFrame)
 
-    # get all the trading dates (extract the dates from datetim object)
+    # get all the trading dates (get the dates from datetime object)
     dates = Date.(full_df[:,1])
 
     # get all the unique dates (all the days)
     days = unique(dates)
 
-    # define the array that will store the mid and micro price data (full column)
+    # count the current row we are in, in the dataframe
     row_ind = 1
 
     @showprogress "Computing full_df..." for j in 1:length(days)
@@ -95,14 +94,12 @@ function computeMidMicroArrivalsNormVol(full_df::DataFrame)
         days_date = days[j]
         days_data = full_df[findall(x -> x == days_date, dates), :]
 
-        # keep only continuous trading data 9:00 - 16:49:59 (not sure how to tell if a day is complete)
+        # filter for continuous trading data 9:00 - 16:49:59
         start = DateTime(days_date) + Hour(9)
         close = DateTime(days_date) + Hour(16) + Minute(50)
         days_cont_data = days_data[findall(x -> start <= x && x < close, days_data[:,1]),:]
 
-        # currently not doing compacting because the paper never but need to ask
-
-        # loop through all the events in a day and create the dataframe with all the ask, bid and trade data
+        # loop through all the events in a day, compute the computable columns of full_df
         for i in 1:size(days_cont_data)[1]
 
             # get event
@@ -118,7 +115,7 @@ function computeMidMicroArrivalsNormVol(full_df::DataFrame)
                 # get the best ask price up until this event
                 best_ask_ind = findlast(x -> x == "ASK", days_cont_data[1:i,:eventType])
 
-                # there are no best ask offers
+                # there are no best ask offers (eg begining of day)
                 if isnothing(best_ask_ind)
 
                     full_df[row_ind, :midPrice] = NaN
@@ -165,7 +162,9 @@ function computeMidMicroArrivalsNormVol(full_df::DataFrame)
 
             elseif event[:eventType] == "TRADE"
 
-                # mid price does not change until after trade but during it is still the same (if trade is first thig that heppens in the day then NaN)
+                # mid price does not change until after trade (new best ask or bid) but during it is still the same
+                # (if trade is first thing that heppens in the day then NaN)
+                # i = 1, no bid or ask, i = 2 one side of the order book is empty
                 if i > 2
 
                     full_df[row_ind, :midPrice] = full_df[row_ind-1, :midPrice]
@@ -181,6 +180,7 @@ function computeMidMicroArrivalsNormVol(full_df::DataFrame)
 
             end
 
+            # increment the row that we are in
             row_ind = row_ind + 1
 
         end
@@ -201,15 +201,16 @@ function computeMidMicroArrivalsNormVol(full_df::DataFrame)
         # get all the trading events
         days_trade_data = days_data[findall(x -> x == "TRADE", days_data[:,:eventType]),:]
 
+        # get the ids to help with populating the full df
         trade_events_ids = days_trade_data[:,:id]
 
         # compute inter arrivals
         inter_arrivals = diff(datetime2unix.(days_trade_data[:,:timeStamp]))
 
-        # add the data to the full_df data DataFrame
+        # add the inter-arrival data to the full_df data DataFrame
         full_df[trade_events_ids[1:(length(trade_events_ids)-1)],:interArrivals] = inter_arrivals
 
-        # add the data to the full_df data DataFrame
+        # add the mid price change data to the full_df data DataFrame
         full_df[findall(x -> x == days_date, dates)[1:(size(days_data)[1]-1)], :midPriceChange] = mid_price_changes
 
     end
@@ -301,7 +302,7 @@ function classifyTrades(full_df::DataFrame)
 
                         # now compare to the last trade that did not have the same value
 
-                        # get all previous trades that happened
+                        # get all previous trades that happened including the current trade (inefficient)
                         prev_days_data_trade = days_data_trade[1:i, :]
 
                         # now get the last trade that was different
@@ -315,7 +316,7 @@ function classifyTrades(full_df::DataFrame)
 
                             full_df[findall(x -> x == trade_event[:id], full_df[:,:id]), :tradeSign] = ["-1"]
 
-                        else
+                        else # the trade could not be classified
 
                             full_df[findall(x -> x == trade_event[:id], full_df[:,:id]), :tradeSign] = [""]
 
@@ -344,7 +345,7 @@ function compact(full_df::DataFrame)
     # get all the unique time stamps
     time_stamps = unique(full_df[:,:timeStamp])
 
-    # create the df thaty will hold the compacted data
+    # create the df that will hold the compacted data
     full_compact_df = DataFrame(timeStamp = DateTime[], date = Date[], time = Time[], eventType = String[], bid = Float64[], bidVol = Float64[],
     ask = Float64[], askVol = Float64[], trade = Float64[], tradeVol = Float64[], normTradeVol = Float64[], midPrice = Float64[],
     midPriceChange = Float64[], microPrice = Float64[], interArrivals = Float64[], tradeSign = String[], id = Int64[])
@@ -354,12 +355,13 @@ function compact(full_df::DataFrame)
         # get the current time stamp
         current_time_stamp = time_stamps[i]
 
-        # get all the events for a given day
+        # get all the events for a given day that occured at a current time stamp
         time_stamp_events = full_df[findall(x -> x == current_time_stamp, full_df[:,:timeStamp]),:]
 
         # get the last Bid in the given time stamp (quote compacting is done by fetching the most recent quote)
         best_bid_ind = findlast(x -> x == "BID", time_stamp_events[:,:eventType])
 
+        # if there is a last bid push to compact dataframe
         if !isnothing(best_bid_ind)
 
             best_bid = time_stamp_events[best_bid_ind,:]
@@ -379,6 +381,7 @@ function compact(full_df::DataFrame)
         # get all the trades in the given time stamp
         all_trade_inds = findall(x -> x == "TRADE", time_stamp_events[:,:eventType])
 
+        # if trades did occur in the timestamp
         if all_trade_inds != []
 
             # get the trades
@@ -388,7 +391,7 @@ function compact(full_df::DataFrame)
             trade_prices = trades[:,:trade]
             trade_vols = trades[:,:tradeVol]
 
-            # compute the volume weighted average trade price 
+            # compute the volume weighted average trade price
             vwap_price = sum(trade_prices .* trade_vols)/sum(trade_vols)
 
             # compute the comulative volume
