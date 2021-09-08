@@ -16,7 +16,7 @@ function plotTaq(ticker::String, date::Date, write::Bool)
     start_time_1 = DateTime(date) + Hour(10)
     close_time_1 = DateTime(date) + Hour(11)
 
-    # get trading data for the first window
+    # get data for the first window
     trading_window_1 = days_data[findall( x -> start_time_1 <= x && x < close_time_1, days_data[:,:timeStamp]), :]
 
     # get the scale factor for the trading volumes
@@ -28,7 +28,7 @@ function plotTaq(ticker::String, date::Date, write::Bool)
     #maximum(filter(:askVol => x -> !(ismissing(x) || isnothing(x) || isnan(x)), trading_window_1)[:,:askVol]),
     #maximum(filter(:tradeVol => x -> !(ismissing(x) || isnothing(x) || isnan(x)), trading_window_1)[:,:tradeVol])])
 
-    # used to ensure the legend makes sense
+    # filter out all the missing info so plots look nice
     bid_filter = filter(:bid => x -> !(ismissing(x) || isnothing(x) || isnan(x)), trading_window_1)
     ask_filter = filter(:ask => x -> !(ismissing(x) || isnothing(x) || isnan(x)), trading_window_1)
     trade_filter = filter(:trade => x -> !(isnan(x)), trading_window_1)
@@ -67,12 +67,15 @@ function plotTaq(ticker::String, date::Date, write::Bool)
     Plots.scatter!(ask_filter[:,:time], ask_filter[:,:ask], markercolor = :red, markersize = ask_filter[:,:askVol]./scale_factor_2, legend = true, label = "Ask")
     Plots.plot!(trading_window_2[:,:time], trading_window_2[:,:microPrice], linetype = :steppost, color = :black, legend = true, linewidth = 0.5, label = "Microprice")
 
+    # actually plot the first plot
     p1_final = Plots.plot(p1, layout = (1,1), legend = false, label = ("Bid","Ask","Trade","Microprice"), background_color = :white,
     xlabel = date, ylabel = "Price [ZAR]", title = ""*ticker*" Top of Book Trade and Quote Data Visualization", size = (700,500), dpi = 1000)
 
+    # actually plot the second plot
     p2_final = Plots.plot(p2, layout = (1,1), legend = false, label = ("Bid","Ask","Trade","Microprice"), background_color = :white,
     xlabel = date, ylabel = "Price [ZAR]", title = ""*ticker*" Top of Book Trade and Quote Data Visualization", size = (700,500), dpi = 1000)
 
+    # diplay plots using GR backend
     display(p1_final)
     display(p2_final)
 
@@ -127,7 +130,7 @@ function plotOrderFlowACF(ticker::String, lags::Int64, write::Bool)
     p1_acf = Plots.plot(p1, xlabel = L"\textrm{\textbf{Lag}}", ylabel = L"\textrm{\textbf{Autocorrelation}}", title = "Autocorrelation of the Order Flow for "*ticker*"")
     display(p1_acf)
 
-
+    # create the plot and display the plot
     p2_acf_log = Plots.plot(1:lags, order_flow_acf, color = :black, seriestype = :line, xscale = :log10, legend = false,
     xlabel = L"\textrm{\textbf{Lag \;}} \textbf{(log_{10})}", ylabel = L"\textrm{\textbf{Autocorrelation}}", title = "Autocorrelation of the Order Flow for "*ticker*"")
     display(p2_acf_log)
