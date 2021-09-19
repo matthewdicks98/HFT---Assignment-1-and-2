@@ -1,7 +1,7 @@
 using CSV, DataFrames, Dates, ProgressMeter, Plots, LaTeXStrings, TimeSeries, GR
 
 # set working directory and clear the console
-cd("C:\\Users\\Matt\\Desktop\\UCT Advanced Analytics\\HFT\\HFT---Assignment-1")
+cd("C:\\Users\\Matt\\Desktop\\UCT Advanced Analytics\\HFT\\HFT---Assignment-1-and-2")
 clearconsole()
 
 ## Create the dataframe that holds all the info
@@ -342,6 +342,8 @@ end
 
 function compact(full_df::DataFrame)
 
+    # need to store the quotes before the trades occur
+
     # get all the unique time stamps
     time_stamps = unique(full_df[:,:timeStamp])
 
@@ -352,31 +354,15 @@ function compact(full_df::DataFrame)
 
     @showprogress "Compacting..." for i in 1:length(time_stamps)
 
+        # compacting order is TRADE, LAST BID, LAST ASK
+        # trade is acting on the LAST BID or LAST ASK of the prev timestep
+        # simplifying assumption that may need to be fixed
+
         # get the current time stamp
         current_time_stamp = time_stamps[i]
 
         # get all the events for a given day that occured at a current time stamp
         time_stamp_events = full_df[findall(x -> x == current_time_stamp, full_df[:,:timeStamp]),:]
-
-        # get the last Bid in the given time stamp (quote compacting is done by fetching the most recent quote)
-        best_bid_ind = findlast(x -> x == "BID", time_stamp_events[:,:eventType])
-
-        # if there is a last bid push to compact dataframe
-        if !isnothing(best_bid_ind)
-
-            best_bid = time_stamp_events[best_bid_ind,:]
-            push!(full_compact_df, best_bid)
-
-        end
-
-        # get the last ask in the given time stamp (quote compacting is done by fetching the most recent quote)
-        best_ask_ind = findlast(x -> x == "ASK", time_stamp_events[:,:eventType])
-        if !isnothing(best_ask_ind) # if there is a best ask for this time stamp
-
-            best_ask = time_stamp_events[best_ask_ind,:]
-            push!(full_compact_df, best_ask)
-
-        end
 
         # get all the trades in the given time stamp
         all_trade_inds = findall(x -> x == "TRADE", time_stamp_events[:,:eventType])
@@ -403,6 +389,182 @@ function compact(full_df::DataFrame)
 
         end
 
+        # get the last Bid in the given time stamp (quote compacting is done by fetching the most recent quote)
+        best_bid_ind = findlast(x -> x == "BID", time_stamp_events[:,:eventType])
+
+        # if there is a last bid push to compact dataframe
+        if !isnothing(best_bid_ind)
+
+            best_bid = time_stamp_events[best_bid_ind,:]
+            push!(full_compact_df, best_bid)
+
+        end
+
+        # get the last ask in the given time stamp (quote compacting is done by fetching the most recent quote)
+        best_ask_ind = findlast(x -> x == "ASK", time_stamp_events[:,:eventType])
+        if !isnothing(best_ask_ind) # if there is a best ask for this time stamp
+
+            best_ask = time_stamp_events[best_ask_ind,:]
+            push!(full_compact_df, best_ask)
+
+        end
+
+    end
+
+    # we have nulled out the ids so need to create a new id column
+    full_compact_df[:,:id] = 1:size(full_compact_df)[1]
+
+    return full_compact_df
+
+end
+
+function compact_2(full_df::DataFrame)
+
+    # get all the unique time stamps
+    time_stamps = unique(full_df[:,:timeStamp])
+
+    # create the df that will hold the compacted data
+    full_compact_df = DataFrame(timeStamp = DateTime[], date = Date[], time = Time[], eventType = String[], bid = Float64[], bidVol = Float64[],
+    ask = Float64[], askVol = Float64[], trade = Float64[], tradeVol = Float64[], normTradeVol = Float64[], midPrice = Float64[],
+    midPriceChange = Float64[], microPrice = Float64[], interArrivals = Float64[], tradeSign = String[], id = Int64[])
+
+    @showprogress "Compacting..." for i in 1:length(time_stamps)
+
+        # find out if the timestamp had a trade
+        # get the current time stamp
+        current_time_stamp = time_stamps[i]
+
+        # get all the events for a given day that occured at a current time stamp
+        time_stamp_events = full_df[findall(x -> x == current_time_stamp, full_df[:,:timeStamp]),:]
+
+        # get all the trades in the given time stamp
+        all_trade_inds = findall(x -> x == "TRADE", time_stamp_events[:,:eventType])
+
+        # if trades did occur in the timestamp
+        if all_trade_inds != []
+
+            # get the trades
+            trades = time_stamp_events[all_trade_inds, :]
+
+            # get the trade prices and volumes
+            trade_prices = trades[:,:trade]
+            trade_vols = trades[:,:tradeVol]
+
+            # compute the volume weighted average trade price
+            vwap_price = sum(trade_prices .* trade_vols)/sum(trade_vols)
+
+            # compute the comulative volume
+            cummulative_vol = sum(trade_vols)
+
+            # push to the DataFrame (using 1 for id as a place holder)
+            temp_trade = (current_time_stamp, Date.(current_time_stamp), Time.(current_time_stamp), "TRADE", NaN, NaN, NaN, NaN, vwap_price, cummulative_vol, NaN, NaN, NaN, NaN, NaN, "",1)
+
+            # determine if there were quotes before the trade
+            first_trade_ind = findfirst(x -> x == "TRADE", time_stamp_events[:,:eventType])
+
+            # if the first trade was not the first thing that happened in that time step then add the last ask and bid before that
+            if first_trade_ind > 1
+
+                # get all events before the trade occurred
+                events_before_first_trade = time_stamp_events[1:(first_trade_ind - 1),:]
+
+                # get the last Bid in the given time stamp (quote compacting is done by fetching the most recent quote)
+                best_bid_ind = findlast(x -> x == "BID", events_before_first_trade[:,:eventType])
+
+                # get the last ask in the given time stamp (quote compacting is done by fetching the most recent quote)
+                best_ask_ind = findlast(x -> x == "ASK", events_before_first_trade[:,:eventType])
+
+
+                if !isnothing(best_bid_ind) && !isnothing(best_ask_ind)
+
+                    # maintain order of the quotes
+                    if best_bid_ind < best_ask_ind
+
+                        # push bid then ask
+                        best_bid_before = events_before_first_trade[best_bid_ind,:]
+                        push!(full_compact_df, best_bid_before)
+
+                        best_ask_before = events_before_first_trade[best_ask_ind,:]
+                        push!(full_compact_df, best_ask_before)
+
+                    elseif best_ask_ind < best_bid_ind
+
+                        # push ask before bid
+                        best_ask_before = events_before_first_trade[best_ask_ind,:]
+                        push!(full_compact_df, best_ask_before)
+
+                        best_bid_before = events_before_first_trade[best_bid_ind,:]
+                        push!(full_compact_df, best_bid_before)
+
+                    end
+
+                elseif !isnothing(best_bid_ind)
+
+                    # no ask so just push bid
+                    best_bid_before = events_before_first_trade[best_bid_ind,:]
+                    push!(full_compact_df, best_bid_before)
+
+                elseif !isnothing(best_ask_ind)
+
+                    # no bid so just push bid
+                    best_ask_before = events_before_first_trade[best_ask_ind,:]
+                    push!(full_compact_df, best_ask_before)
+
+                end
+
+            end
+
+            # add trade to the dataframe
+            push!(full_compact_df, temp_trade)
+
+        end
+
+        # always push the last ask and last bid of the timestamp
+
+        # get the last Bid in the given time stamp (quote compacting is done by fetching the most recent quote)
+        best_bid_ind = findlast(x -> x == "BID", time_stamp_events[:,:eventType])
+
+        # get the last ask in the given time stamp (quote compacting is done by fetching the most recent quote)
+        best_ask_ind = findlast(x -> x == "ASK", time_stamp_events[:,:eventType])
+
+
+        if !isnothing(best_bid_ind) && !isnothing(best_ask_ind)
+
+            # maintain order of the quotes
+            if best_bid_ind < best_ask_ind
+
+                # push bid then ask
+                best_bid_before = time_stamp_events[best_bid_ind,:]
+                push!(full_compact_df, best_bid_before)
+
+                best_ask_before = time_stamp_events[best_ask_ind,:]
+                push!(full_compact_df, best_ask_before)
+
+            elseif best_ask_ind < best_bid_ind
+
+                # push ask before bid
+                best_ask_before = time_stamp_events[best_ask_ind,:]
+                push!(full_compact_df, best_ask_before)
+
+                best_bid_before = time_stamp_events[best_bid_ind,:]
+                push!(full_compact_df, best_bid_before)
+
+            end
+
+        elseif !isnothing(best_bid_ind)
+
+            # no ask so just push bid
+            best_bid_before = time_stamp_events[best_bid_ind,:]
+            push!(full_compact_df, best_bid_before)
+
+        elseif !isnothing(best_ask_ind)
+
+            # no bid so just push bid
+            best_ask_before = time_stamp_events[best_ask_ind,:]
+            push!(full_compact_df, best_ask_before)
+
+        end
+
     end
 
     # we have nulled out the ids so need to create a new id column
@@ -417,12 +579,22 @@ function makeCleanTaqData(ticker::String)
     data = CSV.read("test_data\\Raw\\JSERAWTAQ"*ticker*".csv", DataFrame)
     println("Read in data...")
     created_full_df = createDataFrame(data) # create the dataframe that is going to hold all the info
-    compact_full_df = compact(created_full_df)  # need to do compacting here
+    compact_full_df = compact_2(created_full_df)  # need to do compacting here
+    #println(first(compact_full_df,100))
     compute_full_df = computeMidMicroArrivalsNormVol(compact_full_df) # compute columns
     classified_trades_df = classifyTrades(compute_full_df) # classify the trades
-    CSV.write("test_data\\Clean\\TAQ\\JSECLEANTAQ"*ticker*".csv", classified_trades_df)
+    CSV.write("test_data\\Clean\\TAQ\\JSECLEANTAQ"*ticker*"_c3.csv", classified_trades_df)
 
 end
 
 makeCleanTaqData("AGL")
 makeCleanTaqData("NPN")
+
+makeCleanTaqData("ABG")
+makeCleanTaqData("BTI")
+makeCleanTaqData("FSR")
+makeCleanTaqData("NED")
+makeCleanTaqData("SBK")
+makeCleanTaqData("SHP")
+makeCleanTaqData("SLM")
+makeCleanTaqData("SOL")

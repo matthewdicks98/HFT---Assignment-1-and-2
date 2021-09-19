@@ -2,3 +2,4 @@
 test_data/Clean/BAR/*.csv
 test_data/Clean/TAQ/*.csv
 test_data/Raw/*.csv
+test_data/Clean/IMPACT/*.jld
