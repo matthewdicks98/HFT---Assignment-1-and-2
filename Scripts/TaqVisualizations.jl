@@ -7,7 +7,7 @@ function plotTaq(ticker::String, date::Date, write::Bool)
     gr()
 
     # read in the data
-    data = CSV.read("test_data\\Clean\\TAQ\\JSECLEANTAQ"*ticker*".csv", DataFrame)
+    data = CSV.read("test_data\\Clean\\TAQ\\JSECLEANTAQ"*ticker*"_c2.csv", DataFrame)
 
     # get the data for the day
     days_data = data[findall(x -> x == date, data[:,:date]), :]
@@ -95,7 +95,7 @@ function plotOrderFlowACF(ticker::String, lags::Int64, write::Bool)
     gr()
 
     # read in the data
-    data = CSV.read("test_data\\Clean\\TAQ\\JSECLEANTAQ"*ticker*".csv", DataFrame)
+    data = CSV.read("test_data\\Clean\\TAQ\\JSECLEANTAQ"*ticker*"_c2.csv", DataFrame)
 
     # get the order flows column
     trade_signs = Int64[]
@@ -153,7 +153,7 @@ function plotInterArrivals(ticker::String, write::Bool)
     gr()
 
     # read in the data
-    data = CSV.read("test_data\\Clean\\TAQ\\JSECLEANTAQ"*ticker*".csv", DataFrame)
+    data = CSV.read("test_data\\Clean\\TAQ\\JSECLEANTAQ"*ticker*"_c2.csv", DataFrame)
 
     # get all the trading events
     trade_data = data[findall(x -> x == "TRADE", data[:,:eventType]),:]
