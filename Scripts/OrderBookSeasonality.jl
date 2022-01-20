@@ -1,5 +1,5 @@
 using CSV, DataFrames, Dates, ProgressMeter, Plots, LaTeXStrings, TimeSeries, GR, StatsBase, StatsPlots, Distributions, JLD
-# github test
+
 # set working directory and clear the console
 cd("C:\\Users\\Matt\\Desktop\\UCT Advanced Analytics\\HFT\\HFT---Assignment-1-and-2")
 clearconsole()
